@@ -20,6 +20,8 @@ class QuestionService:
             "*, question_choices!question_choices_question_id_fkey(*), question_tags(tag)"
         ).eq("user_id", user_id)
 
+        if filters.get("question_set_id"):
+            query = query.eq("question_set_id", filters["question_set_id"])
         if filters.get("category"):
             query = query.eq("category", filters["category"])
         if filters.get("difficulty"):
@@ -42,6 +44,14 @@ class QuestionService:
         if not result.data:
             raise HTTPException(status_code=404, detail="Question not found")
         return result.data
+
+    async def update_question_set(self, user_id: str, question_id: str, question_set_id: str | None) -> dict:
+        result = self.db.from_("questions").update({
+            "question_set_id": question_set_id,
+        }).eq("id", question_id).eq("user_id", user_id).execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Question not found")
+        return result.data[0]
 
     async def delete_question(self, user_id: str, question_id: str) -> dict:
         result = self.db.from_("questions").delete().eq("id", question_id).eq("user_id", user_id).execute()

@@ -8,11 +8,13 @@ class QuizMode(str, Enum):
     category = "category"
     srs = "srs"
     weak = "weak"
+    question_set = "question_set"
 
 
 class QuizStartRequest(BaseModel):
     mode: QuizMode
     category: Optional[str] = None
+    question_set_id: Optional[str] = None
     limit: int = 10
 
 

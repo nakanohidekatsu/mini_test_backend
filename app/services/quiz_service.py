@@ -19,7 +19,9 @@ class QuizService:
             "id, question_text, question_choices!question_choices_question_id_fkey(*)"
         ).eq("user_id", user_id)
 
-        if req.category:
+        if req.mode == "question_set" and req.question_set_id:
+            query = query.eq("question_set_id", req.question_set_id)
+        elif req.category:
             query = query.eq("category", req.category)
         if req.mode == "srs":
             now = datetime.now(timezone.utc).isoformat()

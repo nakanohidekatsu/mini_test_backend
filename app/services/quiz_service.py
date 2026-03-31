@@ -108,15 +108,33 @@ class QuizService:
         )
 
     async def finish_session(self, user_id: str, session_id: str) -> dict:
-        answers_result = self.db.from_("quiz_session_answers").select("is_correct").eq(
+        answers_result = self.db.from_("quiz_session_answers").select("is_correct, elapsed_seconds").eq(
             "session_id", session_id
         ).execute()
         answers = answers_result.data
         score = sum(1 for a in answers if a["is_correct"])
+        total_seconds = sum((a.get("elapsed_seconds") or 0) for a in answers)
 
         self.db.from_("quiz_sessions").update({
             "finished_at": datetime.now(timezone.utc).isoformat(),
             "score": score,
         }).eq("id", session_id).eq("user_id", user_id).execute()
+
+        # study_logs を当日分 upsert（questions_answered / total_seconds を加算）
+        today = datetime.now(timezone.utc).date().isoformat()
+        existing = self.db.from_("study_logs").select("*").eq("user_id", user_id).eq("study_date", today).execute()
+        if existing.data:
+            log = existing.data[0]
+            self.db.from_("study_logs").update({
+                "questions_answered": log["questions_answered"] + len(answers),
+                "total_seconds": log["total_seconds"] + total_seconds,
+            }).eq("id", log["id"]).execute()
+        else:
+            self.db.from_("study_logs").insert({
+                "user_id": user_id,
+                "study_date": today,
+                "questions_answered": len(answers),
+                "total_seconds": total_seconds,
+            }).execute()
 
         return {"session_id": session_id, "score": score, "total": len(answers)}

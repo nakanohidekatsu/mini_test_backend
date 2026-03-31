@@ -64,18 +64,26 @@ class LLMService:
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def _call_llm(self, raw_text: str, max_questions: int) -> list[GeneratedQuestion]:
-        prompt = GENERATE_PROMPT.format(text=raw_text[:8000], max_questions=max_questions)
+        prompt = GENERATE_PROMPT.format(text=raw_text[:6000], max_questions=max_questions)
         try:
             response = self.client.messages.create(
                 model="claude-sonnet-4-6",
-                max_tokens=8192,
+                max_tokens=16000,
                 messages=[{"role": "user", "content": prompt}],
             )
             content = response.content[0].text.strip()
             # マークダウンコードブロックを除去
             if content.startswith("```"):
                 lines = content.splitlines()
-                content = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+                inner = [l for l in lines[1:] if l.strip() != "```"]
+                content = "\n".join(inner)
+            # { ... } の範囲を抽出して不要なテキストを除去
+            start = content.find("{")
+            end = content.rfind("}")
+            if start == -1 or end == -1:
+                logger.error("llm_no_json_found", content_preview=content[:200])
+                raise json.JSONDecodeError("no JSON object found", content, 0)
+            content = content[start:end + 1]
             if not content:
                 logger.error("llm_empty_response")
                 raise json.JSONDecodeError("empty response", "", 0)

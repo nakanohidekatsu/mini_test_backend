@@ -1,9 +1,14 @@
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from app.core.auth import get_current_user, CurrentUser
 from app.schemas.quiz import QuizStartRequest, QuizAnswerRequest
 from app.services.quiz_service import QuizService
 
 router = APIRouter()
+
+
+class FinishRequest(BaseModel):
+    session_id: str
 
 
 @router.post("/start")
@@ -26,8 +31,8 @@ async def submit_answer(
 
 @router.post("/finish")
 async def finish_quiz(
-    session_id: str,
+    req: FinishRequest,
     current_user: CurrentUser = Depends(get_current_user),
 ):
     service = QuizService(current_user.token)
-    return await service.finish_session(user_id=current_user.id, session_id=session_id)
+    return await service.finish_session(user_id=current_user.id, session_id=req.session_id)

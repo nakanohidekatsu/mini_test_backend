@@ -45,6 +45,21 @@ class QuestionService:
             raise HTTPException(status_code=404, detail="Question not found")
         return result.data
 
+    async def update_question(self, user_id: str, question_id: str, data: dict) -> dict:
+        # Update question fields
+        question_fields = {k: v for k, v in data.items() if k in (
+            "question_text", "explanation", "category", "difficulty", "question_set_id", "correct_choice_id"
+        )}
+        result = self.db.from_("questions").update(question_fields).eq("id", question_id).eq("user_id", user_id).execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Question not found")
+
+        # Update choice texts
+        for choice in data.get("choices", []):
+            self.db.from_("question_choices").update({"choice_text": choice["choice_text"]}).eq("id", choice["id"]).execute()
+
+        return await self.get_question(user_id, question_id)
+
     async def update_question_set(self, user_id: str, question_id: str, question_set_id: str | None) -> dict:
         result = self.db.from_("questions").update({
             "question_set_id": question_set_id,

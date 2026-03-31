@@ -7,6 +7,21 @@ from typing import Optional
 router = APIRouter()
 
 
+class ChoiceUpdate(BaseModel):
+    id: str
+    choice_text: str
+
+
+class QuestionUpdate(BaseModel):
+    question_text: str
+    explanation: Optional[str] = None
+    category: Optional[str] = None
+    difficulty: Optional[str] = None
+    question_set_id: Optional[str] = None
+    correct_choice_id: Optional[str] = None
+    choices: list[ChoiceUpdate] = []
+
+
 class QuestionSetPatch(BaseModel):
     question_set_id: Optional[str] = None
 
@@ -53,6 +68,20 @@ async def get_question(
 ):
     service = QuestionService(current_user.token)
     return await service.get_question(user_id=current_user.id, question_id=question_id)
+
+
+@router.put("/{question_id}")
+async def update_question(
+    question_id: str,
+    body: QuestionUpdate,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    service = QuestionService(current_user.token)
+    return await service.update_question(
+        user_id=current_user.id,
+        question_id=question_id,
+        data=body.model_dump(),
+    )
 
 
 @router.patch("/{question_id}/set")

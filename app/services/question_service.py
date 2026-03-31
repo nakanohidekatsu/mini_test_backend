@@ -17,7 +17,8 @@ class QuestionService:
 
     async def list_questions(self, user_id: str, **filters) -> dict:
         query = self.db.from_("questions").select(
-            "*, question_choices!question_choices_question_id_fkey(*), question_tags(tag)"
+            "*, question_choices!question_choices_question_id_fkey(*), question_tags(tag)",
+            count="exact",
         ).eq("user_id", user_id)
 
         if filters.get("question_set_id"):
@@ -34,7 +35,8 @@ class QuestionService:
         query = query.range((page - 1) * per_page, page * per_page - 1)
 
         result = query.execute()
-        return {"questions": result.data, "page": page, "per_page": per_page}
+        total = result.count if result.count is not None else len(result.data)
+        return {"questions": result.data, "page": page, "per_page": per_page, "total": total}
 
     async def get_question(self, user_id: str, question_id: str) -> dict:
         result = self.db.from_("questions").select(

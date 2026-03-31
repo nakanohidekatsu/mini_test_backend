@@ -7,7 +7,7 @@ router = APIRouter()
 
 
 class GenerateRequest(BaseModel):
-    source_id: str
+    source_ids: list[str]
     max_questions: int = 10
     question_set_id: str | None = None
 
@@ -20,7 +20,7 @@ async def generate_questions(
     service = LLMService(current_user.token)
     return await service.generate_questions(
         user_id=current_user.id,
-        source_id=req.source_id,
+        source_ids=req.source_ids,
         max_questions=req.max_questions,
         question_set_id=req.question_set_id,
     )

@@ -42,18 +42,24 @@ class LLMService:
         self.db: Client = create_client(settings.supabase_url, settings.supabase_service_key)
         self.db.postgrest.auth(user_token)
 
-    async def generate_questions(self, user_id: str, source_id: str, max_questions: int = 10, question_set_id: str = None) -> dict:
-        source_result = self.db.from_("question_sources").select("*").eq("id", source_id).eq("user_id", user_id).single().execute()
-        if not source_result.data:
-            raise HTTPException(status_code=404, detail="Source not found")
+    async def generate_questions(self, user_id: str, source_ids: list[str], max_questions: int = 10, question_set_id: str = None) -> dict:
+        texts = []
+        for source_id in source_ids:
+            source_result = self.db.from_("question_sources").select("*").eq("id", source_id).eq("user_id", user_id).single().execute()
+            if not source_result.data:
+                logger.warning("source_not_found", source_id=source_id)
+                continue
+            raw_text = (source_result.data.get("raw_text", "") or "").strip()
+            if raw_text:
+                name = source_result.data.get("source_name", "")
+                texts.append(f"=== {name} ===\n{raw_text}")
 
-        source = source_result.data
-        raw_text = (source.get("raw_text", "") or "").strip()
-        if not raw_text:
-            raise HTTPException(status_code=422, detail="PDFからテキストを抽出できませんでした。スキャン画像PDFは対応していません。テキスト形式のPDFをお使いください。")
+        if not texts:
+            raise HTTPException(status_code=422, detail="PDFからテキストを抽出できませんでした。")
 
-        questions = await self._call_llm(raw_text=raw_text, max_questions=max_questions)
-        saved = await self._save_questions(user_id=user_id, source_id=source_id, questions=questions, question_set_id=question_set_id)
+        combined_text = "\n\n".join(texts)
+        questions = await self._call_llm(raw_text=combined_text, max_questions=max_questions)
+        saved = await self._save_questions(user_id=user_id, source_id=source_ids[0], questions=questions, question_set_id=question_set_id)
         return {"generated": len(saved), "questions": saved}
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))

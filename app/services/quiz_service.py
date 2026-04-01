@@ -4,6 +4,7 @@ from app.schemas.quiz import QuizStartRequest, QuizAnswerRequest, QuizAnswerResp
 from app.services.srs_service import calculate_next_review
 from fastapi import HTTPException
 from datetime import datetime, timezone
+import random
 import structlog
 
 logger = structlog.get_logger()
@@ -32,8 +33,15 @@ class QuizService:
             if ids:
                 query = query.in_("id", ids)
 
-        result = query.limit(req.limit).execute()
-        questions = result.data
+        # 問題集・ランダムモードは全件取得してシャッフル
+        if req.mode in ("question_set", "random"):
+            result = query.execute()
+            questions = result.data
+            random.shuffle(questions)
+            questions = questions[:req.limit]
+        else:
+            result = query.limit(req.limit).execute()
+            questions = result.data
         if not questions:
             raise HTTPException(status_code=404, detail="No questions found")
 

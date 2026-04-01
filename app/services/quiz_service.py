@@ -18,7 +18,7 @@ class QuizService:
     async def start_session(self, user_id: str, req: QuizStartRequest) -> dict:
         query = self.db.from_("questions").select(
             "id, question_text, question_choices!question_choices_question_id_fkey(*)"
-        ).eq("user_id", user_id)
+        )
 
         if req.mode == "question_set" and req.question_set_id:
             query = query.eq("question_set_id", req.question_set_id)

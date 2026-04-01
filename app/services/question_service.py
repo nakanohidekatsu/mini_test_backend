@@ -19,7 +19,7 @@ class QuestionService:
         query = self.db.from_("questions").select(
             "*, question_choices!question_choices_question_id_fkey(*), question_tags(tag)",
             count="exact",
-        ).eq("user_id", user_id)
+        )
 
         if filters.get("question_set_id"):
             query = query.eq("question_set_id", filters["question_set_id"])
@@ -41,7 +41,7 @@ class QuestionService:
     async def get_question(self, user_id: str, question_id: str) -> dict:
         result = self.db.from_("questions").select(
             "*, question_choices!question_choices_question_id_fkey(*), question_tags(tag)"
-        ).eq("id", question_id).eq("user_id", user_id).single().execute()
+        ).eq("id", question_id).single().execute()
 
         if not result.data:
             raise HTTPException(status_code=404, detail="Question not found")

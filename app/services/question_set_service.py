@@ -12,7 +12,7 @@ class QuestionSetService:
         self.db.postgrest.auth(user_token)
 
     async def list_sets(self, user_id: str) -> list:
-        result = self.db.from_("question_sets").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+        result = self.db.from_("question_sets").select("*").order("created_at", desc=True).execute()
         sets = result.data
         for s in sets:
             count_result = self.db.from_("questions").select("id").eq("question_set_id", s["id"]).execute()

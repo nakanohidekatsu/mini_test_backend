@@ -38,35 +38,48 @@ class OCRService:
             raise HTTPException(status_code=400, detail=f"Unsupported source_type: {source_type}")
 
     async def _extract_pdf(self, content: bytes) -> str:
-        # まずテキスト抽出を試みる
+        # 1st: pymupdf でテキスト抽出（最も信頼性が高い）
+        try:
+            import fitz  # pymupdf
+            doc = fitz.open(stream=content, filetype="pdf")
+            text = "\n".join(page.get_text() for page in doc).strip()
+            doc.close()
+            if len(text) >= 20:
+                return text
+        except Exception as e:
+            logger.warning("fitz_text_extraction_failed", error=str(e))
+
+        # 2nd: PyPDF2 でフォールバック
         try:
             import PyPDF2
             reader = PyPDF2.PdfReader(io.BytesIO(content))
             text = "\n".join(page.extract_text() or "" for page in reader.pages).strip()
-            if text:
+            if len(text) >= 20:
                 return text
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("pypdf2_extraction_failed", error=str(e))
 
-        # テキストが空の場合はOCRにフォールバック（スキャンPDF対応）
+        # 3rd: OCR（tesseract が利用可能な環境のみ）
         try:
-            import fitz  # pymupdf
+            import fitz
             import pytesseract
             from PIL import Image
 
             doc = fitz.open(stream=content, filetype="pdf")
             pages_text = []
             for page in doc:
-                mat = fitz.Matrix(2, 2)  # 解像度2倍
+                mat = fitz.Matrix(2, 2)
                 pix = page.get_pixmap(matrix=mat)
                 img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                page_text = pytesseract.image_to_string(img, lang="jpn+eng")
-                pages_text.append(page_text)
+                pages_text.append(pytesseract.image_to_string(img, lang="jpn+eng"))
             doc.close()
-            return "\n".join(pages_text)
+            text = "\n".join(pages_text).strip()
+            if text:
+                return text
         except Exception as e:
-            logger.error("pdf_ocr_failed", error=str(e))
-            raise HTTPException(status_code=422, detail="PDF解析に失敗しました")
+            logger.warning("pdf_ocr_failed", error=str(e))
+
+        raise HTTPException(status_code=422, detail="PDFからテキストを抽出できませんでした。テキスト形式のPDFをお試しください。")
 
     async def _extract_image(self, content: bytes) -> str:
         try:

@@ -1,0 +1,16 @@
+name: Keep Alive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # 10分ごと
+  workflow_dispatch:         # 手動実行も可能
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          curl --fail --silent --show-error \
+            --max-time 30 \
+            "${{ secrets.RENDER_BACKEND_URL }}/health"

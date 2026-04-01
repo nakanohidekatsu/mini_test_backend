@@ -13,4 +13,5 @@ jobs:
         run: |
           curl --fail --silent --show-error \
             --max-time 30 \
+            --output /dev/null \
             https://mini-test-backend.onrender.com/health

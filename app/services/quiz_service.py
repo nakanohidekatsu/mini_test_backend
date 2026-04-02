@@ -58,7 +58,7 @@ class QuizService:
     async def submit_answer(self, user_id: str, req: QuizAnswerRequest) -> QuizAnswerResponse:
         q_result = self.db.from_("questions").select(
             "correct_choice_id, explanation"
-        ).eq("id", req.question_id).eq("user_id", user_id).single().execute()
+        ).eq("id", req.question_id).single().execute()
 
         if not q_result.data:
             raise HTTPException(status_code=404, detail="Question not found")

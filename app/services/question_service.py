@@ -83,20 +83,20 @@ class QuestionService:
         ).eq("user_id", user_id).lte("next_review_at", now).limit(limit).execute()
         return result.data
 
-    async def import_csv(self, user_id: str, file: UploadFile) -> dict:
+    async def import_csv(self, user_id: str, file: UploadFile, question_set_id: str | None = None) -> dict:
         content = await file.read()
         reader = csv.DictReader(io.StringIO(content.decode("utf-8")))
         count = 0
         errors = []
         for i, row in enumerate(reader):
             try:
-                await self._save_question_row(user_id, row)
+                await self._save_question_row(user_id, row, question_set_id=question_set_id)
                 count += 1
             except Exception as e:
                 errors.append({"row": i + 2, "error": str(e)})
         return {"imported": count, "errors": errors}
 
-    async def import_json(self, user_id: str, file: UploadFile) -> dict:
+    async def import_json(self, user_id: str, file: UploadFile, question_set_id: str | None = None) -> dict:
         content = await file.read()
         data = json.loads(content)
         questions = data if isinstance(data, list) else data.get("questions", [])
@@ -104,19 +104,20 @@ class QuestionService:
         errors = []
         for i, row in enumerate(questions):
             try:
-                await self._save_question_row(user_id, row)
+                await self._save_question_row(user_id, row, question_set_id=question_set_id)
                 count += 1
             except Exception as e:
                 errors.append({"index": i, "error": str(e)})
         return {"imported": count, "errors": errors}
 
-    async def _save_question_row(self, user_id: str, row: dict) -> None:
+    async def _save_question_row(self, user_id: str, row: dict, question_set_id: str | None = None) -> None:
         q_result = self.db.from_("questions").insert({
             "user_id": user_id,
             "question_text": row["question_text"],
             "explanation": row.get("explanation"),
             "category": row.get("category"),
             "difficulty": row.get("difficulty"),
+            "question_set_id": question_set_id or None,
         }).execute()
         q_id = q_result.data[0]["id"]
 

@@ -135,6 +135,7 @@ class QuizService:
             log = existing.data[0]
             self.db.from_("study_logs").update({
                 "questions_answered": log["questions_answered"] + len(answers),
+                "correct_answers": log["correct_answers"] + score,
                 "total_seconds": log["total_seconds"] + total_seconds,
             }).eq("id", log["id"]).execute()
         else:
@@ -142,6 +143,7 @@ class QuizService:
                 "user_id": user_id,
                 "study_date": today,
                 "questions_answered": len(answers),
+                "correct_answers": score,
                 "total_seconds": total_seconds,
             }).execute()
 

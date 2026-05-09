@@ -39,3 +39,35 @@ class ProgressService:
     async def get_history(self, user_id: str) -> list:
         result = self.db.from_("study_logs").select("*").eq("user_id", user_id).order("study_date", desc=True).limit(30).execute()
         return result.data
+
+    async def get_category_stats(self, user_id: str) -> dict:
+        progress = self.db.from_("user_progress").select("question_id, total_attempts, correct_attempts").eq("user_id", user_id).execute()
+        if not progress.data:
+            return {"strong": [], "weak": []}
+
+        question_ids = [p["question_id"] for p in progress.data]
+        tags_result = self.db.from_("question_tags").select("question_id, tag").in_("question_id", question_ids).execute()
+
+        progress_map = {p["question_id"]: p for p in progress.data}
+        tag_stats: dict = {}
+        for t in tags_result.data:
+            qid = t["question_id"]
+            tag = t["tag"]
+            p = progress_map.get(qid)
+            if not p:
+                continue
+            if tag not in tag_stats:
+                tag_stats[tag] = {"total": 0, "correct": 0}
+            tag_stats[tag]["total"] += p["total_attempts"]
+            tag_stats[tag]["correct"] += p["correct_attempts"]
+
+        MIN_ATTEMPTS = 3
+        results = [
+            {"tag": tag, "accuracy": round(s["correct"] / s["total"] * 100, 1), "total": s["total"]}
+            for tag, s in tag_stats.items()
+            if s["total"] >= MIN_ATTEMPTS
+        ]
+
+        strong = sorted(results, key=lambda x: x["accuracy"], reverse=True)[:10]
+        weak = sorted(results, key=lambda x: x["accuracy"])[:10]
+        return {"strong": strong, "weak": weak}

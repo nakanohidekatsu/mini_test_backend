@@ -21,3 +21,9 @@ async def get_stats(current_user: CurrentUser = Depends(get_current_user)):
 async def get_history(current_user: CurrentUser = Depends(get_current_user)):
     service = ProgressService(current_user.token)
     return await service.get_history(user_id=current_user.id)
+
+
+@router.get("/category-stats")
+async def get_category_stats(current_user: CurrentUser = Depends(get_current_user)):
+    service = ProgressService(current_user.token)
+    return await service.get_category_stats(user_id=current_user.id)

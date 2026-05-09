@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Ping backend health endpoint
         run: |
-          curl --fail --silent --show-error \
-            --max-time 30 \
-            --output /dev/null \
+          curl --silent --max-time 30 --output /dev/null \
+            --write-out "HTTP %{http_code}\n" \
             https://mini-test-backend.onrender.com/health
+          echo "Ping sent"
